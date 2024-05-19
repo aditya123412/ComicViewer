@@ -1,0 +1,114 @@
+﻿@using System.Net.Http;
+@using System.Net;
+@using HtmlAgilityPack;
+@using System.Text.Json;
+@using ComicViewer;
+
+@page "/comic/add"
+
+<h3>Add New Comic</h3>
+
+<EditForm Model="comic" method="post" OnValidSubmit="AddComic" FormName="AddComic">
+    <div class="form-floating mb-3">
+        <InputText @bind-Value="comic.baseUrl" class="form-control" aria-required="true" />
+        <label for="password" class="form-label">Comic URL</label>
+        <ValidationMessage For="() => comic.baseUrl" class="text-danger" />
+        <div>
+            <button type="submit" class="btn btn-lg btn-primary">Submit</button>
+        </div>
+    </div>
+</EditForm>
+@if (!string.IsNullOrEmpty(comic.imageSrc))
+{
+    <div class="comic-container">
+        <h3 style="justify-self:center">@comic.Title</h3>
+        <br />
+        <img src="@comic.imageSrc" class="comic" />
+        <br />
+        <div class="nav-bar">
+            <button class="nav-button" @onclick="async ()=>await GoTo(comic.firstURL)">First</button>
+            <button class="nav-button" @onclick="async ()=>await GoTo(comic.prevURL)">Previous</button>
+            <button class="nav-button" @onclick="async ()=>await GoTo(comic.randomURL)">Random</button>
+            <button class="nav-button" @onclick="async ()=>await GoTo(comic.nextURL)">Next</button>
+            <button class="nav-button" @onclick="async ()=>await GoTo(comic.lastURL)">Last</button>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromForm]
+    private ComicView comic { get; set; } = new ComicView();
+
+    private Uri myUri { get; set; } = default;
+
+    private string comicsFile = Path.Combine(FileSystem.Current.AppDataDirectory, "comics.json");
+
+    protected override async Task OnInitializedAsync()
+    {
+        comic = new ComicView();
+        if (!File.Exists(comicsFile))
+        {
+            SaveComicsList(comicsFile);
+        }
+    }
+
+    public async Task AddComic()
+    {
+        await GoTo(comic.baseUrl);
+    }
+
+    public async Task GoTo(string url)
+    {
+        try
+        {
+            using (HttpClient client = new HttpClient()) // WebClient class inherits IDisposable
+            {
+                Uri myUri = new Uri(comic.baseUrl);
+                client.BaseAddress = myUri;
+                string htmlCode = await client.GetStringAsync(url);
+                HtmlDocument doc = new HtmlDocument();
+                doc.LoadHtml(htmlCode);
+
+                // var nodes = doc.DocumentNode.SelectNodes("//.item-comic-image");
+                // var imageNode = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("item-comic-image")).First().ChildNodes.Where(x => x.Name.Equals("img", StringComparison.InvariantCultureIgnoreCase)).First();
+                // var src = imageNode.GetAttributeValue("src", "");
+
+                var newComic = GetComic(doc, url, client);
+                if (newComic != null)
+                {
+                    comic.hostName = newComic.Type;
+
+                    SaveComicsList(comicsFile, newComic);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            throw;
+        }
+    }
+    public Comic GetComic(HtmlDocument doc, string url, HttpClient client)
+    {
+        var code = ComicCodes.Codes.FirstOrDefault(x => x.Filter(url));
+        if (code != default)
+        {
+            return code.GetComic(doc, url, client);
+        }
+        return null;
+    }
+    private void SaveComicsList(string path, Comic newComic = null)
+    {
+        List<Comic> comics;
+        if (newComic != null)
+        {
+            comics = JsonSerializer.Deserialize<List<Comic>>(File.ReadAllText(comicsFile));
+            comics.Add(newComic);
+        }
+        else
+        {
+            comics = new List<Comic>();
+        }
+
+        File.WriteAllText(path, JsonSerializer.Serialize(comics));
+    }
+}

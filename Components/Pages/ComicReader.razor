@@ -1,0 +1,118 @@
+﻿@page "/comic/read"
+@using HtmlAgilityPack;
+@using ComicViewer;
+@using System.Text.Json;
+
+<h3>ComicReader</h3>
+<ul style="overflow-x: scroll; height: 155px">
+    @foreach (var _comic in comicsList)
+    {
+        <li class="comic-in-list" style="background-image:url(@_comic.LogoImageFileName); width:80px; height:50px; display:inline-flex;border: 2px; border-radius:5px" @onclick="async ()=>{ host=_comic.Type; await Navigate(_comic.CurrentComic);}">
+            @* <img src="@_comic.LogoImageFileName" />
+        <button data-index="i" @onclick="async ()=>{await Navigate(_comic.CurrentComic);}">
+        @_comic.Name
+        </button> *@
+            <img src="@_comic.LogoImageFileName" alt="@_comic.Name" style="max-width:100%"  />
+            <p>@_comic.Name</p>
+        </li>
+    }
+</ul>
+<br />
+@if (comic != null && !string.IsNullOrEmpty(comic.imageSrc))
+{
+    <div class="comic-container">
+        <h3 style="justify-self:center">@comic.Title</h3>
+        <br />
+        <img src="@comic.imageSrc" class="comic" />
+
+        <br />
+        <div class="nav-bar">
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.firstURL)">First</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.prevURL)">Previous</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.randomURL)">Random</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.nextURL)">Next</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.lastURL)">Last</button>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Comic> comicsList = new List<Comic>();
+    private ComicView comic;
+    private string host;
+
+    [SupplyParameterFromQuery]
+    private int index { get; set; } = 0;
+    private string comicsFile = Path.Combine(FileSystem.Current.AppDataDirectory, "comics.json");
+    // private string comicsFile = "comics.json";
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (File.Exists(comicsFile))
+        {
+            comicsList = JsonSerializer.Deserialize<List<Comic>>(File.ReadAllText(comicsFile));
+        }
+        else
+        {
+            comicsList = new List<Comic>();
+        }
+    }
+
+    public void clicked(object o, object e)
+    {
+
+    }
+
+    public async Task GoToComic(string url)
+    {
+        await Navigate($"https://{host}{url}");
+    }
+
+    public async Task Navigate(string url)
+    {
+        try
+        {
+            using (HttpClient client = new HttpClient()) // WebClient class inherits IDisposable
+            {
+                string htmlCode = await client.GetStringAsync(url);
+                HtmlDocument doc = new HtmlDocument();
+                doc.LoadHtml(htmlCode);
+                var comicCode = ComicCodes.Codes.FirstOrDefault(x => x.Filter(url));
+                if (comicCode != null)
+                {
+                    comic = comicCode.GetComicView(doc, host);
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception e)
+        {
+            throw;
+        }
+    }
+
+    private ComicView GetComicView(HtmlDocument doc, string host)
+    {
+        // var nodes = doc.DocumentNode.SelectNodes("//.item-comic-image");
+        var imageNode = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("item-comic-image")).First().ChildNodes.Where(x => x.Name.Equals("img", StringComparison.InvariantCultureIgnoreCase)).First();
+        var src = imageNode.GetAttributeValue("src", "");
+
+        var firstLink = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("fa-backward")).First().GetAttributeValue("href", "");
+        var previousLink = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("fa-caret-left")).First().GetAttributeValue("href", "");
+        var nextLink = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("fa-caret-right")).First().GetAttributeValue("href", "");
+        var randomLink = doc.DocumentNode.Descendants(0).Where(n => n.InnerText.Equals("Random")).First().GetAttributeValue("href", "");
+        var lastLink = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("fa-forward")).First().GetAttributeValue("href", "");
+        var title = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("media-heading")).First().InnerHtml;
+
+        comic = new ComicView();
+        comic.imageSrc = src;
+        comic.nextURL = $"https://{host}{nextLink}";
+        comic.prevURL = $"https://{host}{previousLink}";
+        comic.firstURL = $"https://{host}{firstLink}";
+        comic.lastURL = $"https://{host}{lastLink}";
+        comic.randomURL = $"https://{host}{randomLink}";
+        comic.Title = title;
+        return comic;
+    }
+}
