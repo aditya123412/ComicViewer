@@ -1,37 +1,119 @@
-﻿@page "/comic/read"
+﻿@page "/"
+@inject IJSRuntime JS;
 @using HtmlAgilityPack;
 @using ComicViewer;
 @using System.Text.Json;
+@using Fizzler.Systems.HtmlAgilityPack;
 
-<h3>ComicReader</h3>
-<ul style="overflow-x: scroll; height: 155px">
-    @foreach (var _comic in comicsList)
-    {
-        <li class="comic-in-list" style="background-image:url(@_comic.LogoImageFileName); width:80px; height:50px; display:inline-flex;border: 2px; border-radius:5px" @onclick="async ()=>{ host=_comic.Type; await Navigate(_comic.CurrentComic);}">
-            @* <img src="@_comic.LogoImageFileName" />
-        <button data-index="i" @onclick="async ()=>{await Navigate(_comic.CurrentComic);}">
-        @_comic.Name
-        </button> *@
-            <img src="@_comic.LogoImageFileName" alt="@_comic.Name" style="max-width:100%"  />
-            <p>@_comic.Name</p>
-        </li>
+<script>
+    function hammerIt(elm) {
+        var hammertime = new Hammer(elm, {});
+        hammertime.get('pinch').set({ enable: true });
+
+        var posX = 0,
+            posY = 0,
+            scale = 1,
+            last_scale = 1,
+            last_posX = 0,
+            last_posY = 0,
+            max_pos_x = 0,
+            max_pos_y = 0,
+            transform = "",
+            el = elm;
+
+        hammertime.on('doubletap pan pinch panend pinchend', function (ev) {
+            if (ev.type == "doubletap") {
+                transform = "translate3d(0, 0, 0) scale3d(2, 2, 1)";
+                scale = 2;
+                last_scale = 2;
+
+                if (window.getComputedStyle(el, null).getPropertyValue('-webkit-transform').toString() != "matrix(1, 0, 0, 1, 0, 0)") {
+                    transform = "translate3d(0, 0, 0) scale3d(1, 1, 1)";
+                    scale = 1;
+                    last_scale = 1;
+                }
+
+                el.style.webkitTransform = transform;
+                transform = "";
+            }
+
+            // Pan
+            if (scale != 1) {
+                posX = last_posX + ev.deltaX;
+                posY = last_posY + ev.deltaY;
+                max_pos_x = Math.ceil((scale - 1) * el.clientWidth / 2);
+                max_pos_y = Math.ceil((scale - 1) * el.clientHeight / 2);
+
+                if (posX > max_pos_x) {
+                    posX = max_pos_x;
+                }
+                if (posX < -max_pos_x) {
+                    posX = -max_pos_x;
+                }
+                if (posY > max_pos_y) {
+                    posY = max_pos_y;
+                }
+                if (posY < -max_pos_y) {
+                    posY = -max_pos_y;
+                }
+            }
+            if (ev.type == "pinch") {
+                scale = Math.max(.999, Math.min(last_scale * ev.scale, 4));
+            }
+            if (ev.type == "pinchend") {
+                last_scale = scale;
+            }
+
+            // Panend
+            if (ev.type == "panend") {
+                last_posX = posX < max_pos_x ? posX : max_pos_x;
+                last_posY = posY < max_pos_y ? posY : max_pos_y;
+            }
+
+            if (scale != 1) {
+                transform = "translate3d(" + posX + "px, " + posY + "px, 0) scale3d(" + scale + ", " + scale + ", 1)";
+            }
+
+            if (transform) {
+                el.style.webkitTransform = transform;
+            }
+        });
     }
-</ul>
+</script>
+<h3>ComicReader</h3>
+<div style="overflow-x:scroll;height: 60px; width:fit-content">
+    <table @ref="comicsListView" style="overflow-x:scroll">
+        <tbody>
+            <tr>
+                @foreach (var _comic in comicsList)
+                {
+                    <td style="background-image:url(@_comic.LogoImageFileName); width:120px; height:75px;border: 2px double black; border-radius:5px;" @onclick="async ()=>{ host=_comic.Type; await Navigate(_comic.CurrentComic);}">
+                        @if (!string.IsNullOrEmpty(_comic.LogoImageFileName))
+                        {
+                            <img src="@_comic.LogoImageFileName" alt="@_comic.Name" style="max-width:100%;height:70%;display:block" />
+                        }
+                        <p style="max-width:fit-content;height:30%;display:block">@_comic.Name</p>
+                    </td>
+                }
+            </tr>
+        </tbody>
+    </table>
+</div>
 <br />
 @if (comic != null && !string.IsNullOrEmpty(comic.imageSrc))
 {
     <div class="comic-container">
         <h3 style="justify-self:center">@comic.Title</h3>
         <br />
-        <img src="@comic.imageSrc" class="comic" />
+        <img src="@comic.imageSrc" class="comic" style="touch-action:pinch-zoom" />
 
         <br />
         <div class="nav-bar">
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.firstURL)">First</button>
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.prevURL)">Previous</button>
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.randomURL)">Random</button>
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.nextURL)">Next</button>
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.lastURL)">Last</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.firstURL)" disabled="@string.IsNullOrEmpty(comic.firstURL)">First</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.prevURL)" disabled="@string.IsNullOrEmpty(comic.prevURL)">Previous</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.randomURL)" disabled="@string.IsNullOrEmpty(comic.randomURL)">Random</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.nextURL)" disabled="@string.IsNullOrEmpty(comic.nextURL)">Next</button>
+            <button class="nav-button" @onclick="async ()=>await Navigate(comic.lastURL)" disabled="@string.IsNullOrEmpty(comic.lastURL)">Last</button>
         </div>
     </div>
 }
@@ -40,6 +122,7 @@
     private List<Comic> comicsList = new List<Comic>();
     private ComicView comic;
     private string host;
+    private ElementReference comicsListView;
 
     [SupplyParameterFromQuery]
     private int index { get; set; } = 0;
@@ -58,7 +141,13 @@
             comicsList = new List<Comic>();
         }
     }
-
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("hammerIt", comicsListView);
+        }
+    }
     public void clicked(object o, object e)
     {
 
@@ -92,27 +181,13 @@
         }
     }
 
-    private ComicView GetComicView(HtmlDocument doc, string host)
+    public void UpdateCurrentComicDate()
     {
-        // var nodes = doc.DocumentNode.SelectNodes("//.item-comic-image");
-        var imageNode = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("item-comic-image")).First().ChildNodes.Where(x => x.Name.Equals("img", StringComparison.InvariantCultureIgnoreCase)).First();
-        var src = imageNode.GetAttributeValue("src", "");
+        try 
+        {
 
-        var firstLink = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("fa-backward")).First().GetAttributeValue("href", "");
-        var previousLink = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("fa-caret-left")).First().GetAttributeValue("href", "");
-        var nextLink = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("fa-caret-right")).First().GetAttributeValue("href", "");
-        var randomLink = doc.DocumentNode.Descendants(0).Where(n => n.InnerText.Equals("Random")).First().GetAttributeValue("href", "");
-        var lastLink = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("fa-forward")).First().GetAttributeValue("href", "");
-        var title = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("media-heading")).First().InnerHtml;
+        }catch (Exception e){
 
-        comic = new ComicView();
-        comic.imageSrc = src;
-        comic.nextURL = $"https://{host}{nextLink}";
-        comic.prevURL = $"https://{host}{previousLink}";
-        comic.firstURL = $"https://{host}{firstLink}";
-        comic.lastURL = $"https://{host}{lastLink}";
-        comic.randomURL = $"https://{host}{randomLink}";
-        comic.Title = title;
-        return comic;
+        }
     }
 }

@@ -69,16 +69,12 @@
                 HtmlDocument doc = new HtmlDocument();
                 doc.LoadHtml(htmlCode);
 
-                // var nodes = doc.DocumentNode.SelectNodes("//.item-comic-image");
-                // var imageNode = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("item-comic-image")).First().ChildNodes.Where(x => x.Name.Equals("img", StringComparison.InvariantCultureIgnoreCase)).First();
-                // var src = imageNode.GetAttributeValue("src", "");
-
                 var newComic = GetComic(doc, url, client);
                 if (newComic != null)
                 {
                     comic.hostName = newComic.Type;
-
                     SaveComicsList(comicsFile, newComic);
+                    comic.baseUrl = "";
                 }
             }
         }

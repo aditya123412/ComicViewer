@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using BlazorPanzoom;
+using Microsoft.Extensions.Logging;
 
 namespace ComicViewer
 {
@@ -15,9 +16,10 @@ namespace ComicViewer
                 });
 
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddBlazorPanzoomServices();
 
 #if DEBUG
-    		builder.Services.AddBlazorWebViewDeveloperTools();
+            builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();
 #endif
 
