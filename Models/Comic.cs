@@ -7,6 +7,7 @@
         public string Type { get; set; }
         public bool HasHiddenComic { get; set; }
         public string LogoImageFileName { get; set; }
+        public ComicCode ComicCode { get; set; }
 
         public Comic()
         {

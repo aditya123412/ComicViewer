@@ -1,5 +1,6 @@
 ﻿using HtmlAgilityPack;
 using Fizzler.Systems.HtmlAgilityPack;
+using Java.Net;
 
 namespace ComicViewer
 {
@@ -10,7 +11,7 @@ namespace ComicViewer
 
             new ComicCode()
             {
-                GetComicView = (HtmlDocument doc, string host) =>
+                GetComicView = (HtmlDocument doc, string host, string name) =>
                 {
                      // var nodes = doc.DocumentNode.SelectNodes("//.item-comic-image");
                     var imageNode = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("item-comic-image")).First().ChildNodes.Where(x => x.Name.Equals("img", StringComparison.InvariantCultureIgnoreCase)).First();
@@ -24,13 +25,14 @@ namespace ComicViewer
                     var title = doc.DocumentNode.Descendants(0).Where(n => n.HasClass("media-heading")).First().InnerHtml;
 
                     var comic = new ComicView();
-                    comic.imageSrc = src;
+                    comic.imageUrl = src;
                     comic.nextURL = $"https://{host}{nextLink}";
                     comic.prevURL = $"https://{host}{previousLink}";
                     comic.firstURL = $"https://{host}{firstLink}";
                     comic.lastURL = $"https://{host}{lastLink}";
                     comic.randomURL = $"https://{host}{randomLink}";
                     comic.Title = title;
+                    comic.Name = name;
                     return comic;
                 },
                 Filter = (string uri) =>
@@ -57,7 +59,7 @@ namespace ComicViewer
             new ComicCode()
             {
 
-                GetComicView = (HtmlDocument doc, string host) =>
+                GetComicView = (HtmlDocument doc, string host, string name) =>
                 {
                     //doc.DocumentNode.QuerySelector(".xcomic-icons").Remove();
                     var html = doc.DocumentNode;
@@ -70,10 +72,11 @@ namespace ComicViewer
                     var title = html.QuerySelector("[property='og:title']").GetAttributeValue("content", "");
 
                     var comic = new ComicView();
-                    comic.imageSrc = src;
+                    comic.imageUrl = src;
                     comic.nextURL = $"{nextLink}";
                     comic.prevURL = $"{previousLink}";
                     comic.Title = title;
+                    comic.Name = name;
                     return comic;
                 },
                 Filter = (string uri) =>
@@ -119,7 +122,7 @@ namespace ComicViewer
                 {
                     return (uri.Contains("explosm.net", StringComparison.InvariantCultureIgnoreCase));
                 },
-                GetComicView = (HtmlDocument doc, string host) =>
+                GetComicView = (HtmlDocument doc, string host, string name) =>
                 {
                     var imageNode = doc.DocumentNode.QuerySelectorAll("link[as='image']").First(x=>x.GetAttributeValue("href","").Contains("files.explosm.net/comics"));
                     var src = imageNode.GetAttributeValue("href", "");
@@ -128,7 +131,7 @@ namespace ComicViewer
                     var title = doc.DocumentNode.QuerySelector("title").InnerHtml;
 
                     var comic = new ComicView();
-                    comic.imageSrc = src;
+                    comic.imageUrl = src;
                     comic.nextURL = $"https://{host}{navLinks[0]}";
                     if (navLinks.Count==3)
                     {
@@ -137,6 +140,7 @@ namespace ComicViewer
 
                     comic.lastURL = $"https://explosm.net/comics/latest";
                     comic.Title = title;
+                    comic.Name=name;
                     return comic;
                 },
             },
@@ -160,7 +164,7 @@ namespace ComicViewer
                         };
                     return newComic;
                 },
-                GetComicView = (HtmlDocument doc, string url) =>
+                GetComicView = (HtmlDocument doc, string url, string name) =>
                 {
                     var imageNode = doc.DocumentNode.QuerySelector("#comic-1").QuerySelector("img");
                     var src = imageNode.GetAttributeValue("src", "");
@@ -180,7 +184,7 @@ namespace ComicViewer
                     }
 
                     var lastLink =  doc.DocumentNode.QuerySelector("a.navi-last");
-                    if (lastLink!=null) {         
+                    if (lastLink!=null) {
                         comic.lastURL = lastLink.GetAttributeValue("href","");
                     }
                     var firstLink =  doc.DocumentNode.QuerySelector("a.navi-first");
@@ -192,9 +196,9 @@ namespace ComicViewer
 
                     var title = doc.DocumentNode.QuerySelector("title").InnerHtml;
 
-                    comic.imageSrc = src;
+                    comic.imageUrl = src;
                     comic.randomURL = randomLink;
-
+                    comic.Name = name;
                     comic.Title = title;
                     return comic;
                 }
@@ -219,7 +223,7 @@ namespace ComicViewer
                         };
                     return newComic;
                 },
-                GetComicView = (HtmlDocument doc, string url) =>
+                GetComicView = (HtmlDocument doc, string url, string name) =>
                 {
                     var imageNode = doc.DocumentNode.QuerySelector("#comic").QuerySelector("img");
                     var src = imageNode.GetAttributeValue("src", "");
@@ -233,7 +237,7 @@ namespace ComicViewer
                     var title = doc.DocumentNode.QuerySelector("title").InnerHtml;
 
                     var comic = new ComicView();
-                    comic.imageSrc = src;
+                    comic.imageUrl = src;
                     comic.nextURL = nextLink;
                     comic.prevURL = prevLink;
                     //comic.randomURL = randomLink;
@@ -241,6 +245,20 @@ namespace ComicViewer
                     comic.lastURL = lastLink;
                     comic.firstURL = firstLink;
                     comic.Title = title;
+                    comic.Name = name;
+
+                    var bonusDiv = doc.DocumentNode.QuerySelector("#extrapanelbutton");
+                    if (bonusDiv!=null)
+                    {
+                        using (HttpClient client = new HttpClient()) // WebClient class inherits IDisposable
+                        {
+                            string htmlCode =  client.GetStringAsync(bonusDiv.QuerySelector("a").GetAttributeValue("href","")).Result;
+                            HtmlDocument bonusDoc = new HtmlDocument();
+                            bonusDoc.LoadHtml(htmlCode);
+                            var pic = bonusDoc.DocumentNode.QuerySelector(".extrapanelimage").GetAttributeValue("src","");
+                            comic.hiddenImageUrl = $"https:{pic}";
+                        }
+                    }
                     return comic;
                 }
             },
@@ -260,14 +278,14 @@ namespace ComicViewer
                             HasHiddenComic = false,
                             CurrentComic = url,
                             Type = host,
-                            LogoImageFileName = "https://nedroid.com/header_banner.png"
+                            LogoImageFileName = "https://www.nedroid.com/favicon.ico"
                         };
                     return newComic;
                 },
-                GetComicView = (HtmlDocument doc, string url) =>
+                GetComicView = (HtmlDocument doc, string url, string name) =>
                 {
                     var imageNode = doc.DocumentNode.QuerySelector("img.comic");
-                    var src = "https://www.nedroid.com/" + imageNode.GetAttributeValue("src", "").Replace(" ", "");
+                    var src = "https://www.nedroid.com/" + imageNode.GetAttributeValue("src", "").Replace(" ", "").Replace("http:","https:");
 
                     var navLinks = doc.DocumentNode.QuerySelector("div.navbar").QuerySelectorAll("a").Select(x=>x.GetAttributeValue("href", "")).ToArray();
                     var firstLink =  "https://www.nedroid.com/"+navLinks[0];
@@ -279,17 +297,142 @@ namespace ComicViewer
                     var title = doc.DocumentNode.QuerySelector("title").InnerHtml;
 
                     var comic = new ComicView();
-                    comic.imageSrc = src;
+                    comic.imageUrl = src;
                     comic.nextURL = nextLink;
                     comic.prevURL = prevLink;
                     comic.randomURL = randomLink;
-
+                    comic.Name = name;
                     comic.lastURL = lastLink;
                     comic.firstURL = "https://www.nedroid.com/?1";
                     comic.Title = title;
                     return comic;
                 }
             },
+            new ComicCode()
+            {
+
+                GetComicView = (HtmlDocument doc, string host, string name) =>
+                {
+                    //doc.DocumentNode.QuerySelector(".xcomic-icons").Remove();
+                    var html = doc.DocumentNode;
+
+                    var imageNode = html.QuerySelector("#comic-1").QuerySelector("img");
+                    var src = imageNode.GetAttributeValue("src", "");
+
+                    var previousLink = html.QuerySelector("a.navi-next").GetAttributeValue("href", "");
+                    var nextLink = html.QuerySelector("a.navi-prev").GetAttributeValue("href", "");
+
+                    var firstLink = html.QuerySelector("a.navi-first").GetAttributeValue("href", "");
+                    var lastLink = html.QuerySelector("a.navi-last").GetAttributeValue("href", "");
+
+                    var title = html.QuerySelector("title").GetDirectInnerText();
+
+                    var comic = new ComicView();
+                    comic.imageUrl = src;
+                    comic.nextURL = $"{nextLink}";
+                    comic.prevURL = $"{previousLink}";
+                    comic.firstURL = firstLink;
+                    comic.lastURL= lastLink;
+                    comic.Title = title;
+                    comic.Name = name;
+
+                    try
+                    {
+                        var hiddenPageLink = html.QuerySelector("#question").QuerySelector("a").GetAttributeValue("href","");
+                        using(var client = new HttpClient())
+                        {
+                            string htmlCode = client.GetStringAsync(hiddenPageLink).Result;
+                            HtmlDocument hdoc = new HtmlDocument();
+                            hdoc.LoadHtml(htmlCode);
+                            var hiddenImg = hdoc.DocumentNode.QuerySelector("#comic-1").QuerySelector("img");
+                            comic.hiddenImageUrl = hiddenImg.GetAttributeValue("src","").Replace("http:","https:");
+                        }
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    return comic;
+                },
+                Filter = (string uri) =>
+                {
+                    return (uri.Contains("amazingsuperpowers.com", StringComparison.InvariantCultureIgnoreCase));
+                },
+                GetComic = (HtmlDocument doc, string url, HttpClient client) =>
+                {
+                    var title = "Amazing Super Powers";
+                    var myUri = new Uri(url);
+                    string host = myUri.Host;
+                    var imageUrl = $"https://{host}/jsnews/images/comics/{title}.png";
+
+                    var newComic = new Comic()
+                        {
+                            Name = title,
+                            HasHiddenComic = true,
+                            CurrentComic = url,
+                            Type = host,
+                            LogoImageFileName = imageUrl
+                        };
+                    return newComic;
+                }
+            },
+            new ComicCode()
+            {
+                Filter = (string uri) =>
+                {
+                    return (uri.Contains("extrafabulouscomics.com", StringComparison.InvariantCultureIgnoreCase));
+                },
+                GetComic = (HtmlDocument doc, string url, HttpClient client) =>
+                {
+                    var title = "Extra Fabulous Comics";
+                    var myUri = new Uri(url);
+                    string host = myUri.Host;
+                    var imageUrl = $"https://us-a.tapas.io/sa/f0/3988e06b-f7c2-456f-8ec6-0ea12a9c0cde_z.png";
+
+                    var newComic = new Comic()
+                        {
+                            Name = title,
+                            HasHiddenComic = false,
+                            CurrentComic = url,
+                            Type = host,
+                            LogoImageFileName = imageUrl
+                        };
+                    return newComic;
+                },
+                GetComicView = (HtmlDocument doc, string host, string name) =>
+                {
+                    //doc.DocumentNode.QuerySelector(".xcomic-icons").Remove();
+                    var html = doc.DocumentNode;
+
+                    var imageNode = html.QuerySelector(".post-content__body").QuerySelector("img");
+                    var src = imageNode.GetAttributeValue("src", "");
+
+                    var index = int.Parse( html.QuerySelector("title").GetDirectInnerText() );
+                    var nextIndex = "____"+(index+1).ToString();
+                    var prevIndex = "____"+(index-1).ToString();
+                    var randomIndex = "____"+(Random.Shared.Next(1,1234)).ToString();
+
+
+
+                    var nextLink = "https://www.extrafabulouscomics.com/"+nextIndex.Substring(nextIndex.Length-5);
+                    var prevLink = "https://www.extrafabulouscomics.com/"+prevIndex.Substring(prevIndex.Length-5);
+                    var randomLink = "https://www.extrafabulouscomics.com/"+randomIndex.Substring(randomIndex.Length-5);
+
+                    //var firstLink = html.QuerySelector("a.navi-first").GetAttributeValue("href", "");
+                    //var lastLink = html.QuerySelector("a.navi-last").GetAttributeValue("href", "");
+
+                    var title = html.QuerySelector("title").GetDirectInnerText();
+
+                    var comic = new ComicView();
+                    comic.imageUrl = src.Split("/v1")[0];
+                    comic.Title = title;
+                    comic.Name = name;
+                    comic.nextURL = nextLink;
+                    comic.prevURL = prevLink;
+                    comic.randomURL = randomLink;
+                    return comic;
+                },
+            }
         };
 
         public static ComicCode GetComicCode(string url)

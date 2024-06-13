@@ -3,7 +3,7 @@
 @using HtmlAgilityPack;
 @using System.Text.Json;
 @using ComicViewer;
-
+@using Plugin.Toast;
 @page "/comic/add"
 
 <h3>Add New Comic</h3>
@@ -18,12 +18,21 @@
         </div>
     </div>
 </EditForm>
-@if (!string.IsNullOrEmpty(comic.imageSrc))
+@if (showDialog)
+{
+    <div style="top:30%;align-self:center;position:fixed;justify-self:center;width:70%;border:1px;border-radius:3px">
+        New Comic Added!
+        <br />
+        <button @onclick="()=>{showDialog=false;}"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(comic.imageUrl))
 {
     <div class="comic-container">
         <h3 style="justify-self:center">@comic.Title</h3>
         <br />
-        <img src="@comic.imageSrc" class="comic" />
+        <img src="@comic.imageUrl" class="comic" />
         <br />
         <div class="nav-bar">
             <button class="nav-button" @onclick="async ()=>await GoTo(comic.firstURL)">First</button>
@@ -38,8 +47,8 @@
 @code {
     [SupplyParameterFromForm]
     private ComicView comic { get; set; } = new ComicView();
-
     private Uri myUri { get; set; } = default;
+    private bool showDialog = false;
 
     private string comicsFile = Path.Combine(FileSystem.Current.AppDataDirectory, "comics.json");
 
@@ -75,12 +84,13 @@
                     comic.hostName = newComic.Type;
                     SaveComicsList(comicsFile, newComic);
                     comic.baseUrl = "";
+                    showDialog = true;
                 }
             }
         }
         catch (Exception e)
         {
-            throw;
+
         }
     }
     public Comic GetComic(HtmlDocument doc, string url, HttpClient client)

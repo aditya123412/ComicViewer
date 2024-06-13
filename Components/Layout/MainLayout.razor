@@ -1,13 +1,24 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<h3 style="justify-content:center;background-color:slateblue;color:whitesmoke;font-weight:bold;font-family:'Comic Sans MS'">Comic Viewer</h3>
 
-    <main>
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+<main>
+    <table style="justify-self:center;width:100%">
+        <tr>
+            <td>
+                <NavLink class="nav-link page-link" href="" Match="NavLinkMatch.All" style="padding:3px;border-radius:3px;justify-content:center;background-color:slateblue;color:whitesmoke;font-weight:bold;font-family:'Comic Sans MS'">
+                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> My Comics
+                </NavLink>
+            </td>
+            <td>
+                <NavLink class="nav-link page-link" href="comic/add" style="padding:3px;border-radius:3px;justify-content:center;background-color:slateblue;color:whitesmoke;font-weight:bold;font-family:'Comic Sans MS'">
+                    <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Add Comic
+                </NavLink>
+            </td>
+        </tr>
+    </table>
+
+    <div class="page" style="margin:auto%">
+        @Body
+    </div>
+</main>

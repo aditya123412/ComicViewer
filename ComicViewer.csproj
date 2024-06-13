@@ -36,30 +36,45 @@
         <!--<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>-->
-        <Platforms>AnyCPU;ARM64</Platforms>
+        <Platforms>AnyCPU;ARM64;ARM32</Platforms>
         <PublishAot>False</PublishAot>
         <PublishTrimmed>False</PublishTrimmed>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-android|AnyCPU'">
       <AndroidKeyStore>False</AndroidKeyStore>
+      <JavaMaximumHeapSize>2G</JavaMaximumHeapSize>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-android|ARM64'">
       <AndroidKeyStore>False</AndroidKeyStore>
+      <JavaMaximumHeapSize>2G</JavaMaximumHeapSize>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-android|AnyCPU'">
       <AndroidKeyStore>False</AndroidKeyStore>
+      <RunAOTCompilation>False</RunAOTCompilation>
+      <JavaMaximumHeapSize>2G</JavaMaximumHeapSize>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-android|ARM64'">
       <AndroidKeyStore>False</AndroidKeyStore>
+      <RunAOTCompilation>False</RunAOTCompilation>
+      <JavaMaximumHeapSize>2G</JavaMaximumHeapSize>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-android|ARM32'">
+      <RunAOTCompilation>False</RunAOTCompilation>
+      <JavaMaximumHeapSize>2G</JavaMaximumHeapSize>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-android|ARM32'">
+      <JavaMaximumHeapSize>2G</JavaMaximumHeapSize>
     </PropertyGroup>
 
     <ItemGroup>
         <!-- App Icon -->
-        <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+        <MauiIcon Include="Resources\AppIcon\sailing.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
 
         <!-- Splash Screen -->
         <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
@@ -77,6 +92,7 @@
 
     <ItemGroup>
         <PackageReference Include="BlazorPanzoom" Version="0.2.1" />
+        <PackageReference Include="CommunityToolkit.Maui.Core" Version="9.0.0" />
         <PackageReference Include="Fizzler" Version="1.3.0" />
         <PackageReference Include="Fizzler.Systems.HtmlAgilityPack" Version="1.2.1" />
         <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
@@ -85,8 +101,8 @@
         <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
+        <PackageReference Include="Plugin.Toast" Version="2.2.0" />
     </ItemGroup>
 
-    <ProjectExtensions><VisualStudio><UserProperties XamarinHotReloadGenericExceptionInfoBarComicViewerHideInfoBar="True" /></VisualStudio></ProjectExtensions>
-
+  
 </Project>

@@ -5,94 +5,18 @@
 @using System.Text.Json;
 @using Fizzler.Systems.HtmlAgilityPack;
 
-<script>
-    function hammerIt(elm) {
-        var hammertime = new Hammer(elm, {});
-        hammertime.get('pinch').set({ enable: true });
-
-        var posX = 0,
-            posY = 0,
-            scale = 1,
-            last_scale = 1,
-            last_posX = 0,
-            last_posY = 0,
-            max_pos_x = 0,
-            max_pos_y = 0,
-            transform = "",
-            el = elm;
-
-        hammertime.on('doubletap pan pinch panend pinchend', function (ev) {
-            if (ev.type == "doubletap") {
-                transform = "translate3d(0, 0, 0) scale3d(2, 2, 1)";
-                scale = 2;
-                last_scale = 2;
-
-                if (window.getComputedStyle(el, null).getPropertyValue('-webkit-transform').toString() != "matrix(1, 0, 0, 1, 0, 0)") {
-                    transform = "translate3d(0, 0, 0) scale3d(1, 1, 1)";
-                    scale = 1;
-                    last_scale = 1;
-                }
-
-                el.style.webkitTransform = transform;
-                transform = "";
-            }
-
-            // Pan
-            if (scale != 1) {
-                posX = last_posX + ev.deltaX;
-                posY = last_posY + ev.deltaY;
-                max_pos_x = Math.ceil((scale - 1) * el.clientWidth / 2);
-                max_pos_y = Math.ceil((scale - 1) * el.clientHeight / 2);
-
-                if (posX > max_pos_x) {
-                    posX = max_pos_x;
-                }
-                if (posX < -max_pos_x) {
-                    posX = -max_pos_x;
-                }
-                if (posY > max_pos_y) {
-                    posY = max_pos_y;
-                }
-                if (posY < -max_pos_y) {
-                    posY = -max_pos_y;
-                }
-            }
-            if (ev.type == "pinch") {
-                scale = Math.max(.999, Math.min(last_scale * ev.scale, 4));
-            }
-            if (ev.type == "pinchend") {
-                last_scale = scale;
-            }
-
-            // Panend
-            if (ev.type == "panend") {
-                last_posX = posX < max_pos_x ? posX : max_pos_x;
-                last_posY = posY < max_pos_y ? posY : max_pos_y;
-            }
-
-            if (scale != 1) {
-                transform = "translate3d(" + posX + "px, " + posY + "px, 0) scale3d(" + scale + ", " + scale + ", 1)";
-            }
-
-            if (transform) {
-                el.style.webkitTransform = transform;
-            }
-        });
-    }
-</script>
-<h3>ComicReader</h3>
-<div style="overflow-x:scroll;height: 60px; width:fit-content">
+<div style="overflow-x:scroll;height:150px;">
     <table @ref="comicsListView" style="overflow-x:scroll">
         <tbody>
             <tr>
                 @foreach (var _comic in comicsList)
                 {
-                    <td style="background-image:url(@_comic.LogoImageFileName); width:120px; height:75px;border: 2px double black; border-radius:5px;" @onclick="async ()=>{ host=_comic.Type; await Navigate(_comic.CurrentComic);}">
+                    <td style="/* background-image:url(@_comic.LogoImageFileName);  */width:120px; height:120px;border: 2px double black; border-radius:5px;" @onclick="async ()=>{ host=_comic.Type; await Navigate(_comic.CurrentComic, _comic.Name); comicPanZoom?.ResetAsync();}">
                         @if (!string.IsNullOrEmpty(_comic.LogoImageFileName))
                         {
-                            <img src="@_comic.LogoImageFileName" alt="@_comic.Name" style="max-width:100%;height:70%;display:block" />
+                            <img src="@_comic.LogoImageFileName" alt="@_comic.Name" style="height:90px;width:120px;display:block" />
                         }
-                        <p style="max-width:fit-content;height:30%;display:block">@_comic.Name</p>
+                        <p style="width:120px;height:30px;display:block">@_comic.Name</p>
                     </td>
                 }
             </tr>
@@ -100,21 +24,63 @@
     </table>
 </div>
 <br />
-@if (comic != null && !string.IsNullOrEmpty(comic.imageSrc))
+@if (comic != null && !string.IsNullOrEmpty(comic.imageUrl))
 {
-    <div class="comic-container">
-        <h3 style="justify-self:center">@comic.Title</h3>
+    <div class="comic-container" style="display:block">
+        <h3 style="justify-self:center">@comic.Title</h3><button @onclick="()=>{ RemoveComic(comic.Name);}" class="btn-close" style="align-self:flex-end;float:right"></button>
         <br />
-        <img src="@comic.imageSrc" class="comic" style="touch-action:pinch-zoom" />
+        <div>
+            <table class="nav-bar" style="width:100%">
+                <tr>
+                    <td>
+                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.firstURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.firstURL)">First</button>
+                        </td>
+                    <td>
+                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.prevURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.prevURL)">Previous</button>
+                    </td>
+                    <td>
+                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.randomURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.randomURL)">Random</button>
+                    </td>
+                    <td>
+                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.nextURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.nextURL)">Next</button>
+                    </td>
+                    <td>
+                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.lastURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.lastURL)">Last</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td><button >Download</button></td>
+                    <td><button @onclick="async()=>{await comicPanZoom.ResetAsync();}">Center Image</button></td>
+                    <td><button>Share</button></td>
+                    <td></td>
+                </tr>
+            </table>
+
+            <br />
+            @try
+            {
+                <div style="width:100%;align-content:center;height:500px" @ondblclick="()=>{comicPanZoom.ZoomAsync(zoom[zoomLevel]); zoomLevel = (++zoomLevel)%zoom.Length;}">
+                    <Panzoom @ref="comicPanZoom" PanzoomOptions="@(new PanzoomOptions {Canvas = true, Overflow = Overflow.Visible})" WheelMode="@WheelMode.ZoomWithWheel" >
+                        <img @ref="@context.ElementReference" src="@comic.imageUrl" class="comic" @ondblclick="()=>{comicPanZoom.ZoomAsync(zoom[zoomLevel]); zoomLevel = (++zoomLevel)%zoom.Length;}" />
+                    </Panzoom>
+                </div>
+            }
+            catch (Exception e)
+            {
+                <h4>@e.Message</h4>
+                <h5>@e.InnerException</h5>
+                <p>@e.StackTrace??.ToString()</p>
+            }            
+        </div>
 
         <br />
-        <div class="nav-bar">
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.firstURL)" disabled="@string.IsNullOrEmpty(comic.firstURL)">First</button>
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.prevURL)" disabled="@string.IsNullOrEmpty(comic.prevURL)">Previous</button>
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.randomURL)" disabled="@string.IsNullOrEmpty(comic.randomURL)">Random</button>
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.nextURL)" disabled="@string.IsNullOrEmpty(comic.nextURL)">Next</button>
-            <button class="nav-button" @onclick="async ()=>await Navigate(comic.lastURL)" disabled="@string.IsNullOrEmpty(comic.lastURL)">Last</button>
-        </div>
+        @if (!string.IsNullOrEmpty(comic.hiddenImageUrl))
+        {
+            @* <Panzoom @ref="hiddenComicPanZoom" PanzoomOptions="@(new PanzoomOptions {Canvas = true})" WheelMode="@WheelMode.ZoomWithWheel"> *@
+            <img src="@comic.hiddenImageUrl" class="comic" style="max-width:400px" />
+            @* </Panzoom> *@
+        }
     </div>
 }
 
@@ -122,7 +88,11 @@
     private List<Comic> comicsList = new List<Comic>();
     private ComicView comic;
     private string host;
+    private double[] zoom = [1, 2, 3];
+    private int zoomLevel = 0;
     private ElementReference comicsListView;
+    private Panzoom comicPanZoom = new Panzoom();
+    private Panzoom hiddenComicPanZoom = new Panzoom();
 
     [SupplyParameterFromQuery]
     private int index { get; set; } = 0;
@@ -145,20 +115,22 @@
     {
         if (firstRender)
         {
-            await JS.InvokeVoidAsync("hammerIt", comicsListView);
+            // await JS.InvokeVoidAsync("hammerIt", comicsListView);
         }
     }
     public void clicked(object o, object e)
     {
 
     }
-
-    public async Task GoToComic(string url)
+    public void Download(string comicImageUrl)
     {
-        await Navigate($"https://{host}{url}");
+        using(var client = new HttpClient())
+        {
+            var st = client.GetByteArrayAsync(comicImageUrl).Result;
+            File.WriteAllBytes(Path.Combine(FileSystem.Current.AppDataDirectory, "comic.jpg"), st);
+        }
     }
-
-    public async Task Navigate(string url)
+    public async Task Navigate(string url, string comicName)
     {
         try
         {
@@ -170,7 +142,8 @@
                 var comicCode = ComicCodes.Codes.FirstOrDefault(x => x.Filter(url));
                 if (comicCode != null)
                 {
-                    comic = comicCode.GetComicView(doc, host);
+                    comic = comicCode.GetComicView(doc, host, comicName);
+                    UpdateCurrentComicDate(comicName, url);
                 }
             }
             StateHasChanged();
@@ -181,12 +154,28 @@
         }
     }
 
-    public void UpdateCurrentComicDate()
+    public void UpdateCurrentComicDate(string comicName, string url)
     {
-        try 
+        try
+        {
+            comicsList.First(x => x.Name == comicName).CurrentComic = url;
+            File.WriteAllText(comicsFile, JsonSerializer.Serialize(comicsList));
+        }
+        catch (Exception e)
         {
 
-        }catch (Exception e){
+        }
+    }
+
+    public void RemoveComic(string comicName)
+    {
+        try
+        {
+            comicsList = comicsList.Where(x => x.Name != comicName).ToList();
+            File.WriteAllText(comicsFile, JsonSerializer.Serialize(comicsList));
+        }
+        catch (Exception e)
+        {
 
         }
     }
