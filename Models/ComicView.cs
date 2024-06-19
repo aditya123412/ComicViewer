@@ -12,6 +12,7 @@
         public string lastURL = "";
         public string randomURL = "";
         public string Title = "";
+        public string Error = "";
         public string Name = "";
     }
 }

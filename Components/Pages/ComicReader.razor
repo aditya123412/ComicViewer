@@ -11,7 +11,8 @@
             <tr>
                 @foreach (var _comic in comicsList)
                 {
-                    <td style="/* background-image:url(@_comic.LogoImageFileName);  */width:120px; height:120px;border: 2px double black; border-radius:5px;" @onclick="async ()=>{ host=_comic.Type; await Navigate(_comic.CurrentComic, _comic.Name); comicPanZoom?.ResetAsync();}">
+                    <td style="width:120px; height:120px;border: 2px double black; border-radius:5px;" @onclick="async ()=>{ host=_comic.Type; await Navigate(_comic.CurrentComic, _comic.Name); comicPanZoom?.ResetAsync();}">
+                        <button class="btn-close" style="position:relative;top:0px;right:0px;z-index:10" @onclick="()=>{ RemoveComic(_comic.Name);}">X</button>
                         @if (!string.IsNullOrEmpty(_comic.LogoImageFileName))
                         {
                             <img src="@_comic.LogoImageFileName" alt="@_comic.Name" style="height:90px;width:120px;display:block" />
@@ -33,24 +34,24 @@
             <table class="nav-bar" style="width:100%">
                 <tr>
                     <td>
-                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.firstURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.firstURL)">First</button>
-                        </td>
-                    <td>
-                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.prevURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.prevURL)">Previous</button>
+                        <button class="nav-button nav-btn" @onclick="async ()=>{await Navigate(comic.firstURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.firstURL)">First</button>
                     </td>
                     <td>
-                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.randomURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.randomURL)">Random</button>
+                        <button class="nav-button nav-btn" @onclick="async ()=>{await Navigate(comic.prevURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.prevURL)">Previous</button>
                     </td>
                     <td>
-                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.nextURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.nextURL)">Next</button>
+                        <button class="nav-button nav-btn" @onclick="async ()=>{await Navigate(comic.randomURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.randomURL)">Random</button>
                     </td>
                     <td>
-                        <button class="nav-button" @onclick="async ()=>{await Navigate(comic.lastURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.lastURL)">Last</button>
+                        <button class="nav-button nav-btn" @onclick="async ()=>{await Navigate(comic.nextURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.nextURL)">Next</button>
+                    </td>
+                    <td>
+                        <button class="nav-button nav-btn" @onclick="async ()=>{await Navigate(comic.lastURL, comic.Name); await comicPanZoom.ResetAsync();}" disabled="@string.IsNullOrEmpty(comic.lastURL)">Last</button>
                     </td>
                 </tr>
                 <tr>
                     <td></td>
-                    <td><button >Download</button></td>
+                    <td><button>Download</button></td>
                     <td><button @onclick="async()=>{await comicPanZoom.ResetAsync();}">Center Image</button></td>
                     <td><button>Share</button></td>
                     <td></td>
@@ -60,8 +61,8 @@
             <br />
             @try
             {
-                <div style="width:100%;align-content:center;height:500px" @ondblclick="()=>{comicPanZoom.ZoomAsync(zoom[zoomLevel]); zoomLevel = (++zoomLevel)%zoom.Length;}">
-                    <Panzoom @ref="comicPanZoom" PanzoomOptions="@(new PanzoomOptions {Canvas = true, Overflow = Overflow.Visible})" WheelMode="@WheelMode.ZoomWithWheel" >
+                <div style="width:100%;align-content:center;min-height:300px" @ondblclick="()=>{comicPanZoom.ZoomAsync(zoom[zoomLevel]); zoomLevel = (++zoomLevel)%zoom.Length;}">
+                    <Panzoom @ref="comicPanZoom" PanzoomOptions="@(new PanzoomOptions {Canvas = true, Overflow = Overflow.Visible})" WheelMode="@WheelMode.ZoomWithWheel">
                         <img @ref="@context.ElementReference" src="@comic.imageUrl" class="comic" @ondblclick="()=>{comicPanZoom.ZoomAsync(zoom[zoomLevel]); zoomLevel = (++zoomLevel)%zoom.Length;}" />
                     </Panzoom>
                 </div>
@@ -71,7 +72,7 @@
                 <h4>@e.Message</h4>
                 <h5>@e.InnerException</h5>
                 <p>@e.StackTrace??.ToString()</p>
-            }            
+            }
         </div>
 
         <br />
@@ -97,6 +98,7 @@
     [SupplyParameterFromQuery]
     private int index { get; set; } = 0;
     private string comicsFile = Path.Combine(FileSystem.Current.AppDataDirectory, "comics.json");
+    private string imagesDir = Path.Combine(Android.OS.Environment.DirectoryPictures, "ComicViewer");
     // private string comicsFile = "comics.json";
 
 
@@ -124,7 +126,7 @@
     }
     public void Download(string comicImageUrl)
     {
-        using(var client = new HttpClient())
+        using (var client = new HttpClient())
         {
             var st = client.GetByteArrayAsync(comicImageUrl).Result;
             File.WriteAllBytes(Path.Combine(FileSystem.Current.AppDataDirectory, "comic.jpg"), st);
@@ -134,23 +136,18 @@
     {
         try
         {
-            using (HttpClient client = new HttpClient()) // WebClient class inherits IDisposable
+            var comicCode = ComicCodes.Codes.FirstOrDefault(x => x.Filter(url));
+            if (comicCode != null)
             {
-                string htmlCode = await client.GetStringAsync(url);
-                HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml(htmlCode);
-                var comicCode = ComicCodes.Codes.FirstOrDefault(x => x.Filter(url));
-                if (comicCode != null)
-                {
-                    comic = comicCode.GetComicView(doc, host, comicName);
-                    UpdateCurrentComicDate(comicName, url);
-                }
+                comic = comicCode.GetComicView(url, comicName);
+                UpdateCurrentComicDate(comicName, url);
             }
             StateHasChanged();
         }
         catch (Exception e)
         {
-            throw;
+            comic = new ComicView();
+            comic.Error = e.Message;
         }
     }
 

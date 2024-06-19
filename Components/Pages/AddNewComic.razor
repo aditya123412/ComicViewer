@@ -20,11 +20,11 @@
 </EditForm>
 @if (showDialog)
 {
-    <div style="top:30%;align-self:center;position:fixed;justify-self:center;width:70%;border:1px;border-radius:3px">
+    <dialog style="top:30%;display:block;align-self:center;position:fixed;justify-self:center;width:70%;border:1px black;box-shadow: 5px grey;border-radius:3px">
         New Comic Added!
         <br />
-        <button @onclick="()=>{showDialog=false;}"></button>
-    </div>
+        <button @onclick="()=>{showDialog=false;}">Ok</button>
+    </dialog>
 }
 
 @if (!string.IsNullOrEmpty(comic.imageUrl))
